@@ -1,0 +1,16 @@
+{
+  "name": "bills-monthly-notion",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "tsc && node dist/index.js"
+  },
+  "devDependencies": {
+    "typescript": "^4.3.2"
+  },
+  "dependencies": {
+    "@notionhq/client": "^0.1.8",
+    "tslint": "^6.1.3"
+  }
+}
