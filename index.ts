@@ -1,21 +1,60 @@
-import {Client} from '@notionhq/client'
-import { CheckboxProperty, DateProperty, FormulaProperty, Property } from '@notionhq/client/build/src/api-types'
+import { Client } from "@notionhq/client";
+import { PropertyMap } from "@notionhq/client/build/src/api-endpoints";
+import {
+  CheckboxProperty,
+  DateProperty,
+  FormulaProperty,
+} from "@notionhq/client/build/src/api-types";
+import DotEnv from "dotenv";
+import { Duration } from "luxon";
+import NotionAdapter, { PropertyTable } from "./NotionAdapter";
+import NotionApi from "./NotionApi";
 
 type BillsInfo = {
-    NextDue: FormulaProperty
-    Done: CheckboxProperty
-    Due: DateProperty
+  NextDue: FormulaProperty;
+  Done: CheckboxProperty;
+  Due: DateProperty;
+};
 
-}
+DotEnv.config();
 
 (async () => {
-    const notion = new Client({auth: 'secret_BoShGhDDwqXJ3wGKuP4Pzwmcfy686ec9WUaVR72pAhM'})
-    //console.log(await notion.users.list());
-    const database = await notion.search({filter: {property: 'object', value: 'page'}})
-    const billsInfo: BillsInfo = database.results[0].properties as any
-    const dateDue = new Date(billsInfo.Due.date.start)
-    
-    console.log(database.results[0].properties);
-    
-    console.log(await notion.pages.update({page_id: database.results[0].id, properties: {Due: {date: { start: '2021-07-10' }, id: billsInfo.Due.id, type: 'date'}}}));
-})()
+  const notion = NotionApi.getInstance();
+  const database = await notion.search({
+    filter: { property: "object", value: "page" },
+  });
+  const result = database.results.map(async (page) => {
+    const pageId = page.id;
+    const { Done, Due, RecurInterval } = new NotionAdapter().getBillsInfo(
+      page.properties as PropertyMap
+    );
+
+    if (Done && Done.value) {
+      const newDate = Due.value
+        .plus(Duration.fromObject({ days: RecurInterval }))
+        .toFormat(process.env.NOTION_DATE_FORMAT);
+
+      await notion.pages.update({
+        page_id: pageId,
+        properties: {
+          Due: {
+            date: { start: newDate },
+            id: Due.id,
+            type: "date",
+          },
+          Done: {
+            id: Done.id,
+            checkbox: false,
+            type: "checkbox",
+          },
+        },
+      });
+    }
+  });
+
+  try {
+    await Promise.all(result);
+  } catch (err) {
+    console.log(err);
+  }
+})();
