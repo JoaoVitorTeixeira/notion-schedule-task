@@ -6,7 +6,7 @@ export default class NotionApi extends Client {
   public static getInstance(): NotionApi {
     if (!NotionApi.instance) {
       NotionApi.instance = new Client({
-        auth: "secret_BoShGhDDwqXJ3wGKuP4Pzwmcfy686ec9WUaVR72pAhM",
+        auth: process.env.NOTION_AUTH,
       });
     }
 
